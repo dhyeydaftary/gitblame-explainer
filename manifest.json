@@ -1,0 +1,6 @@
+{
+    "manifest_version": 3,
+    "name": "GitBlame Explainer",
+    "version": "1.0",
+    "description": "Hover any GitHub code line to see who wrote it and get an AI explanation."
+}
