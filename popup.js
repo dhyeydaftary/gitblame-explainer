@@ -1,13 +1,13 @@
 // popup.js
 (() => {
     const $ = (id) => document.getElementById(id);
-    const claudeKeyInput = $("claudeKey");
+    const geminiKeyInput = $("geminiKey");
     const githubTokenInput = $("githubToken");
     const saveBtn = $("saveBtn");
     const statusEl = $("status");
 
     let statusTimer = null;
-    let savedValues = { claudeKey: "", githubToken: "" };
+    let savedValues = { geminiKey: "", githubToken: "" };
 
     const showStatus = (message, type = "success") => {
         if (statusTimer) clearTimeout(statusTimer);
@@ -26,23 +26,22 @@
     };
 
     const validate = () => {
-        const claude = claudeKeyInput.value.trim();
+        const gemini = geminiKeyInput.value.trim();
         const github = githubTokenInput.value.trim();
 
-        // Reset both first
-        setInputError(claudeKeyInput, false);
+        setInputError(geminiKeyInput, false);
         setInputError(githubTokenInput, false);
 
-        if (!claude) {
-            setInputError(claudeKeyInput, true);
-            claudeKeyInput.focus();
+        if (!gemini) {
+            setInputError(geminiKeyInput, true);
+            geminiKeyInput.focus();
             showStatus("API key is required to continue.", "error");
             return null;
         }
-        if (!claude.startsWith("sk-ant-")) {
-            setInputError(claudeKeyInput, true);
-            claudeKeyInput.focus();
-            showStatus("Key must start with sk-ant-", "error");
+        if (!gemini.startsWith("AIza")) {
+            setInputError(geminiKeyInput, true);
+            geminiKeyInput.focus();
+            showStatus("Gemini key must start with AIza", "error");
             return null;
         }
         if (github && !github.startsWith("ghp_")) {
@@ -51,7 +50,7 @@
             showStatus("Token must start with ghp_", "error");
             return null;
         }
-        return { claudeKey: claude, githubToken: github };
+        return { geminiKey: gemini, githubToken: github };
     };
 
     const save = () => {
@@ -59,7 +58,7 @@
         if (!data) return;
 
         if (
-            data.claudeKey === savedValues.claudeKey &&
+            data.geminiKey === savedValues.geminiKey &&
             data.githubToken === savedValues.githubToken
         ) {
             showStatus("Already up to date - no changes.", "success");
@@ -67,7 +66,7 @@
         }
 
         saveBtn.disabled = true;
-        saveBtn.textContent = "Saving…";
+        saveBtn.textContent = "Saving...";
 
         chrome.storage.local.set(data, () => {
             savedValues = { ...data };
@@ -77,16 +76,16 @@
         });
     };
 
-    chrome.storage.local.get(["claudeKey", "githubToken"], (result) => {
-        if (result.claudeKey) claudeKeyInput.value = result.claudeKey;
+    chrome.storage.local.get(["geminiKey", "githubToken"], (result) => {
+        if (result.geminiKey) geminiKeyInput.value = result.geminiKey;
         if (result.githubToken) githubTokenInput.value = result.githubToken;
         savedValues = {
-            claudeKey: result.claudeKey || "",
+            geminiKey: result.geminiKey || "",
             githubToken: result.githubToken || "",
         };
     });
 
-    claudeKeyInput.addEventListener("input", () => setInputError(claudeKeyInput, false));
+    geminiKeyInput.addEventListener("input", () => setInputError(geminiKeyInput, false));
     githubTokenInput.addEventListener("input", () => setInputError(githubTokenInput, false));
 
     saveBtn.addEventListener("click", save);

@@ -9,9 +9,19 @@
     const ok = (data) => ({ success: true, data });
     const fail = (error) => ({ success: false, error });
 
+    const DEV_KEYS = {
+        geminiKey: "",
+        githubToken: ""
+    };
+
     const getStoredKeys = () =>
         new Promise((resolve) =>
-            chrome.storage.local.get(["claudeKey", "githubToken"], resolve)
+            chrome.storage.local.get(["geminiKey", "githubToken"], (result) => {
+                resolve({
+                    geminiKey: result.geminiKey || DEV_KEYS.geminiKey,
+                    githubToken: result.githubToken || DEV_KEYS.githubToken
+                });
+            })
         );
 
     const getCache = (key) =>
@@ -61,7 +71,7 @@
         }
 
         if (res.status === 403) throw new Error("GitHub rate limit reached. Add a token in the popup for 5,000 req/hr.");
-        if (res.status === 404) throw new Error("Repo or file not found — is it private? Add a GitHub token.");
+        if (res.status === 404) throw new Error("Repo or file not found. Is it private? Add a GitHub token.");
         if (!res.ok) throw new Error(`GitHub returned ${res.status}. Try again shortly.`);
 
         const data = await res.json();
@@ -69,46 +79,44 @@
         return data[0];
     };
 
-    const askClaude = async (commit, claudeKey) => {
+    const askGemini = async (commit, geminiKey) => {
         const prompt = `A developer made this Git commit:
 Message: "${commit.commit.message}"
 Author: ${commit.commit.author.name}
 Date: ${commit.commit.author.date}
 
-In 1–2 plain English sentences, explain what was changed and why.
+In 1-2 plain English sentences, explain what was changed and why.
 Write for a CS student reading unfamiliar code. Be concise. Do not start with "This commit".`;
 
         let res;
         try {
-            res = await timedFetch("https://api.anthropic.com/v1/messages", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-api-key": claudeKey,
-                    "anthropic-version": "2023-06-01",
-                },
-                body: JSON.stringify({
-                    model: "claude-haiku-4-5-20251001",
-                    max_tokens: 150,
-                    messages: [{ role: "user", content: prompt }],
-                }),
-            });
+            res = await timedFetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { maxOutputTokens: 150 }
+                    }),
+                }
+            );
         } catch (e) {
-            if (e.name === "AbortError") throw new Error("Claude request timed out. Try again.");
-            throw new Error("Network error reaching Claude. Check your connection.");
+            if (e.name === "AbortError") throw new Error("Gemini request timed out. Try again.");
+            throw new Error("Network error reaching Gemini. Check your connection.");
         }
 
-        if (res.status === 401) throw new Error("Invalid Claude API key. Update it in the popup.");
-        if (res.status === 429) throw new Error("Claude rate limit hit. Wait a moment and retry.");
+        if (res.status === 400) throw new Error("Invalid Gemini API key. Update it in the popup.");
+        if (res.status === 429) throw new Error("Gemini rate limit hit. Wait a moment and retry.");
         if (!res.ok) {
-            let msg = `Claude returned ${res.status}`;
+            let msg = `Gemini returned ${res.status}`;
             try { const b = await res.json(); msg = b.error?.message || msg; } catch { }
             throw new Error(msg);
         }
 
         const data = await res.json();
-        const text = data?.content?.[0]?.text;
-        if (!text) throw new Error("Claude returned an empty response.");
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) throw new Error("Gemini returned an empty response.");
         return text.trim();
     };
 
@@ -128,10 +136,10 @@ Write for a CS student reading unfamiliar code. Be concise. Do not start with "T
         const work = (async () => {
             try {
                 const keys = await getStoredKeys();
-                if (!keys.claudeKey) return fail("Add your Claude API key in the extension popup.");
+                if (!keys.geminiKey) return fail("Add your Gemini API key in the extension popup.");
 
                 const commit = await fetchGitHubCommits(owner, repo, filePath, keys.githubToken);
-                const explanation = await askClaude(commit, keys.claudeKey);
+                const explanation = await askGemini(commit, keys.geminiKey);
 
                 const result = {
                     author: commit.commit.author.name,
