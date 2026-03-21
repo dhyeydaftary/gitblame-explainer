@@ -1,13 +1,13 @@
 // popup.js
 (() => {
     const $ = (id) => document.getElementById(id);
-    const geminiKeyInput = $("geminiKey");
+    const groqKeyInput = $("groqKey");
     const githubTokenInput = $("githubToken");
     const saveBtn = $("saveBtn");
     const statusEl = $("status");
 
     let statusTimer = null;
-    let savedValues = { geminiKey: "", githubToken: "" };
+    let savedValues = { groqKey: "", githubToken: "" };
 
     const showStatus = (message, type = "success") => {
         if (statusTimer) clearTimeout(statusTimer);
@@ -26,22 +26,22 @@
     };
 
     const validate = () => {
-        const gemini = geminiKeyInput.value.trim();
+        const groq = groqKeyInput.value.trim();
         const github = githubTokenInput.value.trim();
 
-        setInputError(geminiKeyInput, false);
+        setInputError(groqKeyInput, false);
         setInputError(githubTokenInput, false);
 
-        if (!gemini) {
-            setInputError(geminiKeyInput, true);
-            geminiKeyInput.focus();
+        if (!groq) {
+            setInputError(groqKeyInput, true);
+            groqKeyInput.focus();
             showStatus("API key is required to continue.", "error");
             return null;
         }
-        if (!gemini.startsWith("AIza")) {
-            setInputError(geminiKeyInput, true);
-            geminiKeyInput.focus();
-            showStatus("Gemini key must start with AIza", "error");
+        if (!groq.startsWith("gsk_")) {
+            setInputError(groqKeyInput, true);
+            groqKeyInput.focus();
+            showStatus("Groq key must start with gsk_", "error");
             return null;
         }
         if (github && !github.startsWith("ghp_")) {
@@ -50,7 +50,7 @@
             showStatus("Token must start with ghp_", "error");
             return null;
         }
-        return { geminiKey: gemini, githubToken: github };
+        return { groqKey: groq, githubToken: github };
     };
 
     const save = () => {
@@ -58,7 +58,7 @@
         if (!data) return;
 
         if (
-            data.geminiKey === savedValues.geminiKey &&
+            data.groqKey === savedValues.groqKey &&
             data.githubToken === savedValues.githubToken
         ) {
             showStatus("Already up to date - no changes.", "success");
@@ -76,16 +76,16 @@
         });
     };
 
-    chrome.storage.local.get(["geminiKey", "githubToken"], (result) => {
-        if (result.geminiKey) geminiKeyInput.value = result.geminiKey;
+    chrome.storage.local.get(["groqKey", "githubToken"], (result) => {
+        if (result.groqKey) groqKeyInput.value = result.groqKey;
         if (result.githubToken) githubTokenInput.value = result.githubToken;
         savedValues = {
-            geminiKey: result.geminiKey || "",
+            groqKey: result.groqKey || "",
             githubToken: result.githubToken || "",
         };
     });
 
-    geminiKeyInput.addEventListener("input", () => setInputError(geminiKeyInput, false));
+    groqKeyInput.addEventListener("input", () => setInputError(groqKeyInput, false));
     githubTokenInput.addEventListener("input", () => setInputError(githubTokenInput, false));
 
     saveBtn.addEventListener("click", save);
