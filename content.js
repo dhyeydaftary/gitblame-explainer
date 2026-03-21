@@ -4,6 +4,8 @@
     const HIDE_DELAY = 280;
     const SCROLL_THRESHOLD = 60;
     const TOOLTIP_WIDTH = 340;
+    const TOOLTIP_HEIGHT_ESTIMATE = 240;
+    const MARGIN = 16;
 
     let tooltip = null;
     let hoverTimer = null;
@@ -13,6 +15,8 @@
     let lastResolvedData = null;
     let scrollY = window.scrollY;
     let repoInfo = null;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
 
     const parseGitHubUrl = () => {
         const parts = window.location.pathname.split("/").filter(Boolean);
@@ -33,41 +37,118 @@
             #gbe-tooltip {
                 position: absolute;
                 z-index: 99999;
-                width: ${TOOLTIP_WIDTH}px;
-                padding: 14px 16px;
-                background: #0d1117;
-                border: 1px solid #30363d;
-                border-radius: 10px;
+                width: 340px;
+                padding: 18px 20px;
+                background: #161b22;
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 14px;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-                font-size: 12.5px;
-                color: #c9d1d9;
-                box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+                font-size: 13px;
+                color: #b1bac4;
+                line-height: 1.4;
+                box-shadow:
+                    0 20px 60px rgba(0,0,0,0.6),
+                    0 0 0 1px rgba(255,255,255,0.05),
+                    0 0 80px -20px rgba(139,92,246,0.08);
                 opacity: 0;
-                transform: translateY(4px);
-                transition: opacity 0.18s ease, transform 0.18s ease;
-                pointer-events: none;
+                transform: translateY(6px);
                 visibility: hidden;
+                pointer-events: none;
+                transition: opacity 0.2s ease, transform 0.2s ease;
             }
             #gbe-tooltip.gbe-visible {
                 opacity: 1;
                 transform: translateY(0);
-                pointer-events: auto;
                 visibility: visible;
+                pointer-events: auto;
             }
-            .gbe-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-            .gbe-sha { font-family: "SFMono-Regular", Consolas, monospace; font-size: 11.5px; color: #58a6ff; font-weight: 600; }
-            .gbe-date { font-size: 11px; color: #484f58; }
-            .gbe-author { font-size: 11.5px; color: #8b949e; margin-bottom: 6px; }
-            .gbe-message { font-size: 12.5px; color: #e6edf3; line-height: 1.45; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-            .gbe-divider { border: none; border-top: 1px solid #21262d; margin: 8px 0; }
-            .gbe-ai-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #484f58; font-weight: 600; margin-bottom: 4px; }
-            .gbe-explanation { font-size: 12.5px; color: #c9d1d9; line-height: 1.5; }
-            .gbe-link { display: inline-block; margin-top: 10px; font-size: 11px; color: #58a6ff; text-decoration: none; }
-            .gbe-link:hover { text-decoration: underline; }
-            #gbe-tooltip.gbe-loading .gbe-explanation { color: #484f58; }
-            #gbe-tooltip.gbe-error .gbe-explanation { color: #f85149; }
-            @keyframes gbe-pulse { 0%,100% { opacity: .5; } 50% { opacity: 1; } }
-            #gbe-tooltip.gbe-loading .gbe-sha { animation: gbe-pulse 1.2s ease-in-out infinite; }
+            #gbe-tooltip .gbe-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+            }
+            #gbe-tooltip .gbe-sha {
+                font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+                font-size: 11px;
+                font-weight: 600;
+                color: #a78bfa;
+                background: rgba(139,92,246,0.15);
+                border: 1px solid rgba(139,92,246,0.3);
+                padding: 3px 10px;
+                border-radius: 999px;
+                letter-spacing: 0.01em;
+            }
+            #gbe-tooltip .gbe-date {
+                font-size: 11px;
+                color: #4a5568;
+            }
+            #gbe-tooltip .gbe-author {
+                font-size: 12px;
+                color: #6b7280;
+                font-style: italic;
+                margin-bottom: 6px;
+            }
+            #gbe-tooltip .gbe-message {
+                font-size: 13px;
+                font-weight: 600;
+                color: #f0f6fc;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                margin-bottom: 14px;
+                line-height: 1.4;
+            }
+            #gbe-tooltip .gbe-divider {
+                border: none;
+                border-top: 1px solid rgba(255,255,255,0.07);
+                margin: 0 0 14px 0;
+            }
+            #gbe-tooltip .gbe-ai-label {
+                font-size: 10px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: #a78bfa;
+                margin-bottom: 0;
+                padding: 10px 12px 0 12px;
+                background: rgba(139,92,246,0.06);
+                border-left: 2px solid rgba(139,92,246,0.4);
+                border-radius: 0 8px 0 0;
+            }
+            #gbe-tooltip .gbe-explanation {
+                font-size: 12.5px;
+                color: #c9d1d9;
+                line-height: 1.65;
+                margin-bottom: 14px;
+                padding: 8px 12px 10px 12px;
+                background: rgba(139,92,246,0.06);
+                border-left: 2px solid rgba(139,92,246,0.4);
+                border-radius: 0 0 8px 0;
+            }
+            #gbe-tooltip .gbe-link {
+                display: inline-block;
+                font-size: 11px;
+                color: #6b7280;
+                text-decoration: none;
+                transition: color 0.15s ease;
+            }
+            #gbe-tooltip .gbe-link:hover {
+                color: #a78bfa;
+            }
+            #gbe-tooltip.gbe-loading .gbe-sha {
+                animation: gbe-pulse 1.4s ease-in-out infinite;
+            }
+            #gbe-tooltip.gbe-loading .gbe-explanation {
+                color: #374151;
+            }
+            #gbe-tooltip.gbe-error .gbe-explanation {
+                color: #f87171;
+            }
+            @keyframes gbe-pulse {
+                0%, 100% { opacity: 0.3; }
+                50% { opacity: 1; }
+            }
         `;
         document.head.appendChild(style);
     };
@@ -112,42 +193,24 @@
         }
     };
 
-    const positionTooltip = (anchor) => {
+    const positionTooltip = () => {
         const t = createTooltip();
-        const baseRect = anchor.getBoundingClientRect();
-        
-        let rightEdge = baseRect.right || 0;
-        let leftEdge = baseRect.left || 0;
-        let topEdge = baseRect.top || 0;
-        let bottomEdge = baseRect.bottom || 0;
-        
-        try {
-            const range = document.createRange();
-            range.selectNodeContents(anchor);
-            const rangeRect = range.getBoundingClientRect();
-            if (rangeRect && rangeRect.width > 0) {
-                rightEdge = rangeRect.right ?? rightEdge;
-                leftEdge = rangeRect.left ?? leftEdge;
-                topEdge = rangeRect.top ?? topEdge;
-                bottomEdge = rangeRect.bottom ?? bottomEdge;
-            }
-        } catch (e) {
-            // Silently fallback to anchor component boundaries
-        }
 
-        let left = rightEdge + 12;
-        let top = topEdge - 8;
+        const mouseX = lastMouseX;
+        const mouseY = lastMouseY;
 
+        let left = mouseX + MARGIN;
         if (left + TOOLTIP_WIDTH + 8 > window.innerWidth) {
-            left = leftEdge;
-            top = bottomEdge + 8;
+            left = mouseX - TOOLTIP_WIDTH - MARGIN;
         }
-        
         left = Math.max(4, left);
-        
-        if (Number.isNaN(left)) left = 12;
-        if (Number.isNaN(top)) top = 12;
-        
+
+        let top = mouseY;
+        if (top + TOOLTIP_HEIGHT_ESTIMATE > window.innerHeight) {
+            top = window.innerHeight - TOOLTIP_HEIGHT_ESTIMATE - MARGIN;
+        }
+        top = Math.max(4, top);
+
         t.style.left = `${left + window.scrollX}px`;
         t.style.top = `${top + window.scrollY}px`;
     };
@@ -175,7 +238,7 @@
         }, HIDE_DELAY);
     };
 
-    const showLoading = (cell) => {
+    const showLoading = () => {
         setTooltipState("loading");
         setField("gbe-sha", "fetching...");
         setField("gbe-date", "");
@@ -183,7 +246,7 @@
         setField("gbe-message", "");
         setField("gbe-explanation", "Asking AI...");
         setLink(null);
-        positionTooltip(cell);
+        positionTooltip();
         showTooltip();
     };
 
@@ -204,17 +267,14 @@
     };
 
     const handleHover = (cell, lineNumber) => {
-        console.log(`[GitBlame Explainer] handleHover executing for line: ${lineNumber}`);
         if (lineNumber === lastResolvedLine && lastResolvedData) {
-            console.log(`[GitBlame Explainer] Using cached data for line: ${lineNumber}`);
-            positionTooltip(cell);
+            positionTooltip();
             showData(lastResolvedData);
             showTooltip();
             return;
         }
 
-        console.log(`[GitBlame Explainer] Showing loading state for line: ${lineNumber}`);
-        showLoading(cell);
+        showLoading();
 
         chrome.runtime.sendMessage(
             {
@@ -225,10 +285,8 @@
                 lineNumber,
             },
             (response) => {
-                console.log(`[GitBlame Explainer] Background response received:`, response);
                 if (currentLine !== lineNumber) return;
                 if (chrome.runtime.lastError) {
-                    console.error(`[GitBlame Explainer] Background script error:`, chrome.runtime.lastError);
                     showError("Extension error — try reloading the page.");
                     return;
                 }
@@ -248,41 +306,21 @@
     };
 
     const getLineNumber = (target) => {
-        // 1. Legacy React explicit ID 
-        let cell = target.closest("[id^='LC']");
-        if (cell && cell.id) return { cell, lineNumber: cell.id.slice(2) };
+        const lcCell = target.closest("[id^='LC']");
+        if (lcCell?.id) return { cell: lcCell, lineNumber: lcCell.id.slice(2) };
 
-        // 2. Legacy Table layout 
-        let tr = target.closest("tr");
+        const tr = target.closest("tr");
         if (tr) {
-            let blobCell = tr.querySelector(".blob-code");
-            let lineEl = tr.querySelector("[data-line-number]");
-            if (blobCell && lineEl) return { cell: blobCell, lineNumber: lineEl.getAttribute("data-line-number") };
-        }
-
-        // 3. Current intermediate React layout (has data-line-number) 
-        let lineEl = target.closest("[data-line-number]");
-        if (lineEl) {
-            let num = lineEl.getAttribute("data-line-number");
-            return { cell: lineEl.parentElement || lineEl, lineNumber: num };
-        }
-
-        // 4. Cutting-edge GitHub UI: CSS Modules, missing data-line-number, missing IDs.
-        let current = target;
-        let depth = 0;
-        while (current && current.tagName !== "BODY" && current.tagName !== "MAIN" && depth < 10) {
-            for (let i = 0; i < Math.min(3, current.children.length); i++) {
-                const child = current.children[i];
-                const text = child.textContent.trim();
-                if (/^\d+$/.test(text)) {
-                    const classNames = ((current.className || "") + " " + (child.className || "")).toLowerCase();
-                    if (classNames.includes("line") || classNames.includes("num") || classNames.includes("code") || classNames.includes("react")) {
-                        return { cell: current, lineNumber: text };
-                    }
-                }
+            const blobCell = tr.querySelector(".blob-code");
+            const lineEl = tr.querySelector("[data-line-number]");
+            if (blobCell && lineEl) {
+                return { cell: blobCell, lineNumber: lineEl.getAttribute("data-line-number") };
             }
-            current = current.parentElement;
-            depth++;
+        }
+
+        const lineEl = target.closest("[data-line-number]");
+        if (lineEl) {
+            return { cell: lineEl.parentElement || lineEl, lineNumber: lineEl.getAttribute("data-line-number") };
         }
 
         return null;
@@ -292,40 +330,38 @@
 
     const attachListeners = () => {
         document.addEventListener("mousemove", (e) => {
-            // Throttle to animation frame for performance
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+
             if (moveRaf) cancelAnimationFrame(moveRaf);
-            
             moveRaf = requestAnimationFrame(() => {
                 let result = null;
-                
-                // Fast path: if not blocked by textarea or tooltip
+
                 if (e.target.id !== "gbe-tooltip" && e.target.tagName !== "TEXTAREA") {
                     result = getLineNumber(e.target);
                 }
-                
-                // Slow path: penetrate the transparent overlay layer (like GitHub's new TEXTAREA)
                 if (!result) {
                     const elements = document.elementsFromPoint(e.clientX, e.clientY);
                     for (const el of elements) {
                         if (el.id === "gbe-tooltip" || el.closest("#gbe-tooltip")) continue;
                         if (el.tagName === "TEXTAREA") continue;
-                        
                         result = getLineNumber(el);
                         if (result) break;
                     }
                 }
 
-                // Ultimate fallback: If pointer-events is blocked off in the lower layers, 
-                // we query all line numbers linearly and match by Y-coordinate directly.
                 if (!result) {
-                    const lineNums = document.querySelectorAll('[data-line-number], [class*="react-line-number"], [class*="LineNumber-module"]');
+                    const lineNums = document.querySelectorAll('[data-line-number]');
                     for (const num of lineNums) {
                         const rect = num.getBoundingClientRect();
-                        // If the mouse is vertically inside this line's coordinates
                         if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
-                            const text = num.getAttribute('data-line-number') || num.textContent.trim();
-                            if (/^\d+$/.test(text)) {
-                                result = { cell: num.parentElement || num, lineNumber: text };
+                            const text = num.getAttribute('data-line-number');
+                            if (text && /^\d+$/.test(text)) {
+                                const codeContainer = num.parentElement?.parentElement;
+                                const codeCell = codeContainer?.querySelector('.react-file-line') ||
+                                    codeContainer?.querySelector(`[id="LC${text}"]`) ||
+                                    num.parentElement;
+                                result = { cell: codeCell || num.parentElement, lineNumber: text };
                                 break;
                             }
                         }
@@ -333,7 +369,6 @@
                 }
 
                 if (!result) {
-                    // Mouse is no longer over a recognizable code line structure
                     if (currentLine !== null) {
                         currentLine = null;
                         clearTimeout(hoverTimer);
@@ -345,13 +380,10 @@
                 const { cell, lineNumber } = result;
 
                 if (lineNumber === currentLine) {
-                    // We are still within the same line, just moving back and forth
-                    clearTimeout(hideTimer); // Keep tooltip visible
+                    clearTimeout(hideTimer);
                     return;
                 }
 
-                // Transitioned to a fundamentally different line
-                console.log(`[GitBlame Explainer] Hover started on line: ${lineNumber}`);
                 currentLine = lineNumber;
                 clearTimeout(hoverTimer);
                 clearTimeout(hideTimer);
@@ -377,11 +409,7 @@
 
     const init = () => {
         repoInfo = parseGitHubUrl();
-        if (!repoInfo) {
-            console.log("[GitBlame Explainer] Did not detect a valid GitHub file URL. Extension inert.");
-            return;
-        }
-        console.log(`[GitBlame Explainer] Initialized on file: ${repoInfo.filePath} (${repoInfo.owner}/${repoInfo.repo})`);
+        if (!repoInfo) return;
         lastResolvedLine = null;
         lastResolvedData = null;
         attachListeners();

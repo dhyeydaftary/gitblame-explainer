@@ -10,15 +10,15 @@
     const fail = (error) => ({ success: false, error });
 
     const DEV_KEYS = {
-        geminiKey: "",
+        groqKey: "",
         githubToken: ""
     };
 
     const getStoredKeys = () =>
         new Promise((resolve) =>
-            chrome.storage.local.get(["geminiKey", "githubToken"], (result) => {
+            chrome.storage.local.get(["groqKey", "githubToken"], (result) => {
                 resolve({
-                    geminiKey: result.geminiKey || DEV_KEYS.geminiKey,
+                    groqKey: result.groqKey || DEV_KEYS.groqKey,
                     githubToken: result.githubToken || DEV_KEYS.githubToken
                 });
             })
@@ -43,9 +43,7 @@
 
     const formatDate = (iso) =>
         new Date(iso).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
+            year: "numeric", month: "short", day: "numeric",
         });
 
     const timedFetch = (url, options = {}) => {
@@ -79,44 +77,45 @@
         return data[0];
     };
 
-    const askGemini = async (commit, geminiKey) => {
+    const askGroq = async (commit, groqKey) => {
         const prompt = `A developer made this Git commit:
-Message: "${commit.commit.message}"
-Author: ${commit.commit.author.name}
-Date: ${commit.commit.author.date}
+        Message: "${commit.commit.message}"
+        Author: ${commit.commit.author.name}
+        Date: ${commit.commit.author.date}
 
-In 1-2 plain English sentences, explain what was changed and why.
-Write for a CS student reading unfamiliar code. Be concise. Do not start with "This commit".`;
+        In 1-2 plain English sentences, explain what was changed and why.
+        Write for a CS student reading unfamiliar code. Be concise. Do not start with "This commit".`;
 
         let res;
         try {
-            res = await timedFetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: { maxOutputTokens: 150 }
-                    }),
-                }
-            );
+            res = await timedFetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${groqKey}`
+                },
+                body: JSON.stringify({
+                    model: "llama-3.1-8b-instant",
+                    max_tokens: 150,
+                    messages: [{ role: "user", content: prompt }]
+                }),
+            });
         } catch (e) {
-            if (e.name === "AbortError") throw new Error("Gemini request timed out. Try again.");
-            throw new Error("Network error reaching Gemini. Check your connection.");
+            if (e.name === "AbortError") throw new Error("Groq request timed out. Try again.");
+            throw new Error("Network error reaching Groq. Check your connection.");
         }
 
-        if (res.status === 400) throw new Error("Invalid Gemini API key. Update it in the popup.");
-        if (res.status === 429) throw new Error("Gemini rate limit hit. Wait a moment and retry.");
+        if (res.status === 401) throw new Error("Invalid Groq API key. Update it in the popup.");
+        if (res.status === 429) throw new Error("Groq rate limit hit. Wait a moment and retry.");
         if (!res.ok) {
-            let msg = `Gemini returned ${res.status}`;
+            let msg = `Groq returned ${res.status}`;
             try { const b = await res.json(); msg = b.error?.message || msg; } catch { }
             throw new Error(msg);
         }
 
         const data = await res.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!text) throw new Error("Gemini returned an empty response.");
+        const text = data?.choices?.[0]?.message?.content;
+        if (!text) throw new Error("Groq returned an empty response.");
         return text.trim();
     };
 
@@ -136,10 +135,10 @@ Write for a CS student reading unfamiliar code. Be concise. Do not start with "T
         const work = (async () => {
             try {
                 const keys = await getStoredKeys();
-                if (!keys.geminiKey) return fail("Add your Gemini API key in the extension popup.");
+                if (!keys.groqKey) return fail("Add your Groq API key in the extension popup.");
 
                 const commit = await fetchGitHubCommits(owner, repo, filePath, keys.githubToken);
-                const explanation = await askGemini(commit, keys.geminiKey);
+                const explanation = await askGroq(commit, keys.groqKey);
 
                 const result = {
                     author: commit.commit.author.name,
