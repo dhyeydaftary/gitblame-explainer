@@ -1,0 +1,53 @@
+<!-- popup.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>GitBlame Explainer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="popup.css" />
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <img src="icons/icon48.png" alt="GitBlame Explainer icon" class="logo" />
+            <div>
+                <h1>GitBlame Explainer</h1>
+                <p class="tagline">Hover any GitHub line → AI explains it</p>
+            </div>
+        </header>
+
+        <section class="form">
+            <label for="groqKey">Groq API Key <span class="required">*</span></label>
+            <input type="password" id="groqKey" placeholder="gsk_..." />
+            <p class="hint">Get your free key at <strong>console.groq.com</strong></p>
+
+            <label for="githubToken">GitHub Token <span class="optional">(optional)</span></label>
+            <input type="password" id="githubToken" placeholder="ghp_..." />
+            <p class="hint">Without token: 60 req/hr. With token: 5,000/hr.</p>
+
+            <button id="saveBtn">Save</button>
+            <p class="status" id="status"></p>
+        </section>
+
+        <section class="how-to">
+            <h2 class="section-title">How to use</h2>
+            <ol>
+                <li>Save your Groq API key above</li>
+                <li>Open any file on GitHub</li>
+                <li>Hover any line of code for 1 second</li>
+                <li>See the AI explanation appear</li>
+            </ol>
+        </section>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>
